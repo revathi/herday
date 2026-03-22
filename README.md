@@ -1,4 +1,4 @@
-# Shakti 💜 — AI Life-Load Assistant
+# HerDay 💜 — AI Life-Load Assistant
 
 A unified AI assistant that eliminates the invisible mental load on women by intelligently managing meal planning, grocery tracking, and professional task prioritisation — all in one place. Powered by Claude AI (Anthropic).
 
@@ -56,7 +56,7 @@ women_ai/
 
 ## Demo Scenario — Heavy Day (Sarah's Monday)
 
-Sarah has 5 back-to-back meetings, a Q1 report due today, and low energy. She opens Shakti and types *"Plan my day — it's a heavy one"*.
+Sarah has 5 back-to-back meetings, a Q1 report due today, and low energy. She opens HerDay and types *"Plan my day — it's a heavy one"*.
 
 The assistant:
 - Detects it is a heavy day from calendar + energy level
@@ -164,7 +164,7 @@ The assistant:
 
 ## Key Features for Hackathon Judges
 
-| Requirement | How Shakti delivers |
+| Requirement | How HerDay delivers |
 |-------------|-------------------|
 | Unified cross-domain interface | Work + home tasks in one list; meals + tasks on one page |
 | Adaptive preference learning | Accept/reject meals; BMI-aware suggestions; rejected meals never repeated |
