@@ -1,0 +1,16 @@
+{
+  "user": "Revathi",
+  "dietary": "non-vegetarian",
+  "cuisine_preferences": [
+    "Indian"
+  ],
+  "allergies": [],
+  "max_cook_time_busy_day": 30,
+  "max_cook_time_normal_day": 55,
+  "work_hours": "9am-6pm",
+  "peak_energy_hours": "9am-12pm",
+  "family_size": 3,
+  "height_cm": 161,
+  "weight_kg": 70,
+  "age": 40
+}

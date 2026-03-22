@@ -1,0 +1,22 @@
+{
+  "date": "Monday",
+  "energy_level": "low",
+  "meetings": [
+    {"time": "9:00am", "title": "Team Standup", "duration_mins": 30},
+    {"time": "10:00am", "title": "Client Presentation", "duration_mins": 60},
+    {"time": "12:00pm", "title": "Team Sync", "duration_mins": 45},
+    {"time": "2:00pm", "title": "Design Review", "duration_mins": 60},
+    {"time": "4:00pm", "title": "1:1 with Manager", "duration_mins": 30}
+  ],
+  "work_tasks": [
+    {"title": "Finish Q1 report", "priority": "high", "due": "today", "estimated_mins": 90},
+    {"title": "Reply to client emails", "priority": "medium", "due": "today", "estimated_mins": 30},
+    {"title": "Review design mockups", "priority": "low", "due": "this week", "estimated_mins": 45}
+  ],
+  "home_tasks": [
+    {"title": "Grocery shopping", "priority": "high", "estimated_mins": 45},
+    {"title": "Do laundry", "priority": "medium", "estimated_mins": 60},
+    {"title": "Call mom", "priority": "low", "estimated_mins": 20}
+  ],
+  "fridge_items": ["pasta", "eggs", "cheese", "tomatoes", "spinach", "onions", "garlic"]
+}
