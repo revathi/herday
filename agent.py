@@ -42,7 +42,7 @@ def build_prompt(profile, day, work_tasks=None, home_tasks=None, rejected_meals=
     else:
         home_str = "\n".join([f"  - {t['title']} (~{t['estimated_mins']} mins)" for t in day["home_tasks"]])
 
-    return f"""You are a proactive AI life-load assistant helping {profile['user']} manage her day.
+    return f"""You are a proactive AI agent helping {profile['user']} manage her day.
 
 USER PROFILE:
 - Dietary preference: {profile['dietary']}
@@ -141,7 +141,7 @@ def run_agent(work_tasks=None, home_tasks=None, rejected_meals=None, energy_leve
                           home_tasks=home_tasks, rejected_meals=rejected_meals)
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -187,7 +187,7 @@ Respond ONLY with valid JSON:
 }}"""
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=512,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -210,7 +210,7 @@ def chat_agent(user_message: str, chat_history: list,
     work_str = "\n".join([f"  - [{t.priority.upper()}] {t.title}" for t in (work_tasks or [])])
     home_str = "\n".join([f"  - {t.title}" for t in (home_tasks or [])])
 
-    system_prompt = f"""You are a warm, proactive AI life-load assistant for {profile['user']}.
+    system_prompt = f"""You are a warm, proactive AI agent for {profile['user']}.
 You help her manage work tasks, home tasks, and meal planning together.
 
 CURRENT CONTEXT:
@@ -230,7 +230,7 @@ If the user seems stressed or tired, acknowledge it in one sentence before advis
     messages = chat_history + [{"role": "user", "content": user_message}]
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=512,
         system=system_prompt,
         messages=messages

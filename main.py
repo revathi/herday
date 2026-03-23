@@ -4,7 +4,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 from agent import run_agent
 
-print("Running Women AI Life-Load Assistant...")
+print("Running HerAgent...")
 print("-" * 50)
 
 plan = run_agent()

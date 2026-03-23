@@ -1,6 +1,6 @@
-# HerDay 💜 — AI Life-Load Assistant
+# HerDay 💜 — HerAgent
 
-A unified AI assistant that eliminates the invisible mental load on women by intelligently managing meal planning, grocery tracking, and professional task prioritisation — all in one place. Powered by Claude AI (Anthropic).
+A unified AI Agent that eliminates the invisible mental load on women by intelligently managing meal planning, grocery tracking, and professional task prioritisation — all in one place. Powered by Claude AI (Anthropic).
 
 ---
 
@@ -26,7 +26,7 @@ App opens at: http://localhost:8501
 | Layer | Tool |
 |-------|------|
 | Language | Python 3.12 |
-| AI Brain | Claude API (Anthropic) — Haiku model |
+| AI Brain | Claude API (Anthropic) — Sonnet model |
 | Frontend | Streamlit (Lavender theme) |
 | Database | SQLite via SQLAlchemy |
 | Env | python-dotenv |
@@ -58,7 +58,7 @@ women_ai/
 
 Sarah has 5 back-to-back meetings, a Q1 report due today, and low energy. She opens HerDay and types *"Plan my day — it's a heavy one"*.
 
-The assistant:
+HerAgent:
 - Detects it is a heavy day from calendar + energy level
 - Surfaces only the **top 2 work tasks** she can realistically complete
 - Defers the rest automatically with reasons
