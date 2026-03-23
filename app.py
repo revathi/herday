@@ -24,6 +24,9 @@ def _logo_b64():
 LOGO_B64 = _logo_b64()
 
 day = load_json("data/sarah_monday.json")
+# Override energy from session if user has set it
+if st.session_state.get("energy_level"):
+    day["energy_level"] = st.session_state["energy_level"]
 
 # ── Auth Gate ─────────────────────────────────────────────────────────────────
 if "user" not in st.session_state:
@@ -74,7 +77,6 @@ if "user" not in st.session_state:
                     st.rerun()
                 else:
                     st.error("Invalid username or password.")
-            st.caption("Demo account: **revathi** / **demo123**")
 
         with register_tab:
             rname = st.text_input("Full Name", key="reg_name")
@@ -105,7 +107,7 @@ if "user" not in st.session_state:
 
 # ── Logged-in user ────────────────────────────────────────────────────────────
 user = st.session_state["user"]
-seed_tasks(db, user_id=user.id)
+# seed_tasks disabled — tasks come from user input
 
 # Build profile dict from user object (keeps rest of code compatible)
 profile = {
@@ -255,7 +257,8 @@ button[kind="primary"] {
 with st.sidebar:
     st.markdown("### HerDay 💜")
     st.caption(f"Hi, {profile['user']}!")
-    st.caption(f"{energy_map.get(day['energy_level'])} energy today")
+    if st.session_state.get("energy_set"):
+        st.caption(f"{energy_map.get(day['energy_level'])} energy today")
 
     st.markdown("---")
 
@@ -280,10 +283,14 @@ with st.sidebar:
     meetings_done     = [m for m in day["meetings"] if (e := _meeting_end_dt(m)) and now > e]
     meetings_upcoming = [m for m in day["meetings"] if (e := _meeting_end_dt(m)) is None or now <= e]
 
-    if meetings_upcoming:
-        with st.expander(f"📅 Meetings Today ({len(meetings_upcoming)} upcoming)"):
+    active_tasks = get_tasks(db, user_id=user.id)
+    total_upcoming = len(meetings_upcoming) + len(active_tasks)
+    if total_upcoming > 0:
+        with st.expander(f"📅 Tasks Today ({total_upcoming} upcoming)"):
             for m in meetings_upcoming:
-                st.caption(f"**{m['time']}** — {m['title']}")
+                st.caption(f"📅 **{m['time']}** — {m['title']}")
+            for t in active_tasks:
+                st.caption(f"{'🔴' if t.priority=='high' else '🟡' if t.priority=='medium' else '🟢'} {t.title}")
 
     # Done tasks + completed meetings + appreciation
     done_tasks = get_tasks(db, user_id=user.id, done=True)
@@ -417,18 +424,97 @@ with hcol3:
         st.session_state.clear()
         st.rerun()
 
-# ── Chat — Hero ───────────────────────────────────────────────────────────────
-pcol1, pcol2, pcol3 = st.columns(3)
-prompts = [
-    ("What's in my day", "What tasks and meetings do I have today? Give me a quick overview of what's on my plate."),
-    ("What should I cook",  "What should I cook today given my fridge items and energy level?"),
-    ("What to buy",         "What groceries do I need to buy today based on my fridge items?"),
-]
-for col, (label, message) in zip([pcol1, pcol2, pcol3], prompts):
-    with col:
-        if st.button(label, use_container_width=True):
-            st.session_state["pending_input"] = message
+# ── Energy detection from text ────────────────────────────────────────────────
+def detect_energy(text: str):
+    t = text.lower()
+    if any(w in t for w in ["exhausted","tired","drained","low","not great","rough","struggling","sleepy","worn"]):
+        return "low"
+    elif any(w in t for w in ["great","energised","energized","amazing","fantastic","high","good","fresh","pumped","ready"]):
+        return "high"
+    return None
+
+# ── Welcome / Energy Check ────────────────────────────────────────────────────
+if not st.session_state.get("energy_set"):
+    from datetime import datetime
+    hour = datetime.now().hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+
+    st.markdown(f"""
+    <div style="text-align:center; padding:2.5rem 1rem 1rem;">
+        <div style="font-size:1.9rem; font-weight:800; color:#5b21b6; margin-bottom:0.4rem;">
+            {greeting}, {user.name}! 💜
+        </div>
+        <div style="font-size:1.05rem; color:#6b7280;">
+            I've loaded your {len(day['meetings'])} meetings for today.<br/>
+            How are you feeling? Tell me and I'll plan your day accordingly.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    _, wc, _ = st.columns([1, 2, 1])
+    with wc:
+        feeling = st.text_input("", placeholder="e.g. I'm exhausted, got back-to-back meetings...", label_visibility="collapsed", key="feeling_input")
+        if st.button("Let's go →", use_container_width=True, type="primary") and feeling:
+            energy = detect_energy(feeling) or "medium"
+            st.session_state["energy_set"] = True
+            st.session_state["energy_level"] = energy
+            st.session_state["welcome_message"] = feeling
+            day["energy_level"] = energy
             st.rerun()
+    st.stop()
+
+
+# ── Sound renderer ────────────────────────────────────────────────────────────
+_snd = st.session_state.pop("play_sound", None) or st.session_state.pop("meal_sound", None)
+_grocery_snd = st.session_state.pop("grocery_sound", False)
+if _snd == "done":
+    st.components.v1.html("""<script>
+    (function(){var a=new AudioContext(),t=a.currentTime;
+    [[440,0],[550,0.15],[660,0.3],[880,0.45]].forEach(function(n){
+        var o=a.createOscillator(),g=a.createGain();
+        o.connect(g);g.connect(a.destination);
+        o.frequency.value=n[0];o.type='sine';
+        g.gain.setValueAtTime(0.3,t+n[1]);
+        g.gain.exponentialRampToValueAtTime(0.001,t+n[1]+0.25);
+        o.start(t+n[1]);o.stop(t+n[1]+0.25);});})();
+    </script>""", height=0)
+    st.markdown('<div style="background:#5b21b6;color:white;padding:0.6rem 1rem;border-radius:10px;font-weight:600;margin-bottom:0.5rem;">🎉 Task done — you\'re crushing it!</div>', unsafe_allow_html=True)
+elif _snd == "defer":
+    st.components.v1.html("""<script>
+    (function(){var a=new AudioContext(),t=a.currentTime;
+    [[400,0],[300,0.2]].forEach(function(n){
+        var o=a.createOscillator(),g=a.createGain();
+        o.connect(g);g.connect(a.destination);
+        o.frequency.value=n[0];
+        g.gain.setValueAtTime(0.2,t+n[1]);
+        g.gain.exponentialRampToValueAtTime(0.001,t+n[1]+0.25);
+        o.start(t+n[1]);o.stop(t+n[1]+0.25);});})()</script>""", height=0)
+    st.markdown('<div style="background:#7c3aed;color:white;padding:0.6rem 1rem;border-radius:10px;font-weight:600;margin-bottom:0.5rem;">📌 Deferred — it can wait for later</div>', unsafe_allow_html=True)
+elif _snd == "accept":
+    st.components.v1.html("""<script>
+    var a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
+    o.connect(g);g.connect(a.destination);o.frequency.value=660;
+    g.gain.setValueAtTime(0.3,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.3);
+    o.start();o.stop(a.currentTime+0.3);</script>""", height=0)
+    st.markdown('<div style="background:#5b21b6;color:white;padding:0.6rem 1rem;border-radius:10px;font-weight:600;margin-bottom:0.5rem;">🍽 Meal added to your plan!</div>', unsafe_allow_html=True)
+elif _snd == "reject":
+    st.components.v1.html("""<script>
+    var a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
+    o.connect(g);g.connect(a.destination);o.frequency.value=300;
+    g.gain.setValueAtTime(0.2,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.3);
+    o.start();o.stop(a.currentTime+0.3);</script>""", height=0)
+    st.markdown('<div style="background:#7c3aed;color:white;padding:0.6rem 1rem;border-radius:10px;font-weight:600;margin-bottom:0.5rem;">🔄 Finding a better option for you...</div>', unsafe_allow_html=True)
+
+if _grocery_snd:
+    st.components.v1.html("""<script>
+    var a=new AudioContext(),o=a.createOscillator(),g=a.createGain();
+    o.connect(g);g.connect(a.destination);o.frequency.value=520;o.type='sine';
+    g.gain.setValueAtTime(0.2,a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.2);
+    o.start();o.stop(a.currentTime+0.2);</script>""", height=0)
+    st.markdown('<div style="background:#5b21b6;color:white;padding:0.6rem 1rem;border-radius:10px;font-weight:600;margin-bottom:0.5rem;">🛒 Got it — added to your picked up list!</div>', unsafe_allow_html=True)
 
 user_input = st.chat_input("Ask HerDay anything about your day...")
 if not user_input and st.session_state.get("pending_input"):
@@ -440,13 +526,20 @@ if user_input:
             work_tasks = get_tasks(db, user_id=user.id, domain="work")
             home_tasks = get_tasks(db, user_id=user.id, domain="home")
             reply = chat_agent(user_message=user_input, chat_history=[],
-                               work_tasks=work_tasks, home_tasks=home_tasks)
+                               work_tasks=work_tasks, home_tasks=home_tasks,
+                               energy_level=st.session_state.get("energy_level"))
         st.session_state["last_reply"] = reply
     except Exception:
         st.session_state["last_reply"] = "I'm having trouble connecting right now. Please check your internet and try again."
         st.rerun()
     # Detect intent and set active tab
     msg = user_input.lower()
+    # Update energy from chat if detected
+    detected = detect_energy(user_input)
+    if detected:
+        st.session_state["energy_level"] = detected
+        day["energy_level"] = detected
+
     if any(k in msg for k in ["grocery", "groceries", "shop", "buy", "ingredients"]):
         st.session_state["active_tab"] = 2   # Grocery tab (check before meal — "buy" is more specific)
     elif any(k in msg for k in ["meal", "cook", "breakfast", "lunch", "dinner", "eat", "food"]):
@@ -457,13 +550,14 @@ if user_input:
         st.session_state["active_tab"] = 0   # Tasks tab (default)
 
     planning_keywords = ["plan my day", "plan my", "schedule", "help me priorit", "tired", "exhausted",
-                         "busy", "what should i cook", "dinner", "breakfast", "lunch"]
+                         "busy", "what should i cook", "what to cook", "cook", "dinner", "breakfast", "lunch", "meal"]
     is_grocery_intent = st.session_state.get("active_tab") == 2
     if not is_grocery_intent and any(kw in msg for kw in planning_keywords):
         with st.spinner("Generating your plan..."):
             try:
                 rejected = get_rejected_meal_names(db, user_id=user.id)
-                plan = run_agent(work_tasks=work_tasks, home_tasks=home_tasks, rejected_meals=rejected)
+                plan = run_agent(work_tasks=work_tasks, home_tasks=home_tasks, rejected_meals=rejected,
+                                energy_level=st.session_state.get("energy_level"))
                 st.session_state["plan"] = plan
                 meals_data = plan.get("meals", {})
                 saved_ids = {}
@@ -763,11 +857,13 @@ with tab2:
                                     [i for i in all_ing if not any(f in i.lower() for f in fridge)]
                                 ))
                                 st.session_state["meal_sound"] = "accept"
+                                st.session_state["active_tab"] = 1
                                 st.rerun()
                     with r2:
                         if st.button("Reject", key=f"reject_{mtype}"):
                             update_meal_status(db, meal_id, "rejected")
                             st.session_state["meal_sound"] = "reject"
+                            st.session_state["active_tab"] = 1
                             with st.spinner("Finding alternative..."):
                                 rejected = get_rejected_meal_names(db, user_id=user.id)
                                 new_m = suggest_meal(meal_type=mtype, rejected_meals=rejected)
@@ -798,15 +894,32 @@ with tab3:
     if "plan" in st.session_state:
         plan = st.session_state["plan"]
         st.markdown("#### 🛒 Today's Grocery List")
+        fridge_items = [f.lower() for f in day.get("fridge_items", [])]
         if "bought_items" not in st.session_state:
             st.session_state["bought_items"] = set()
-        remaining = [i for i in plan["grocery_list"] if i not in st.session_state["bought_items"]]
-        if remaining:
-            for item in remaining:
+
+        # Show fridge items separately
+        in_fridge = [i for i in plan["grocery_list"] if any(f in i.lower() or i.lower() in f for f in fridge_items)]
+        to_buy    = [i for i in plan["grocery_list"] if i not in in_fridge and i not in st.session_state["bought_items"]]
+        bought    = list(st.session_state["bought_items"])
+
+        if to_buy:
+            st.markdown("**Need to buy:**")
+            for item in to_buy:
                 if st.checkbox(item, key=f"grocery_{item}"):
                     st.session_state["bought_items"].add(item)
+                    st.session_state["grocery_sound"] = True
+                    st.session_state["active_tab"] = 2
                     st.rerun()
-        else:
+        if in_fridge:
+            st.markdown("**✅ Already in fridge:**")
+            for item in in_fridge:
+                st.markdown(f"&nbsp;&nbsp;&nbsp;🧊 ~~{item}~~", unsafe_allow_html=True)
+        if bought:
+            st.markdown("**🛍 Picked up:**")
+            for item in bought:
+                st.markdown(f"&nbsp;&nbsp;&nbsp;✅ ~~{item}~~", unsafe_allow_html=True)
+        if not to_buy:
             st.success("All done — everything's been picked up!")
     else:
         st.info("💜 Ask HerDay to plan your meals first to generate a grocery list!")

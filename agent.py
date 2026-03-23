@@ -62,18 +62,25 @@ TODAY'S CONTEXT:
 - Items currently in fridge: {fridge}
 {f"- Do NOT suggest these meals (previously rejected): {', '.join(rejected_meals)}" if rejected_meals else ""}
 
-This is an Indian household. Meal planning rules based on energy level:
+Meal planning rules based on energy level:
 
-BUSY DAY (low energy, 4+ meetings):
-- Breakfast: quick home cooked Indian meal under {profile['max_cook_time_busy_day']} mins
-- Lunch: pack kid's lunchbox using leftovers from breakfast where possible
-- Dinner: simple ready-made or minimal-effort Indian meal under {profile['max_cook_time_busy_day']} mins — NO ordering outside
+LOW ENERGY (tired, drained, busy day):
+- All meals must be under {profile['max_cook_time_busy_day']} mins (max 30 mins)
+- Breakfast: quick, minimal effort
+- Lunch: pack lunchbox using breakfast leftovers — zero extra cooking
+- Dinner: simple, ready-made or one-pot meal under 30 mins — NO ordering outside
 
-NORMAL DAY (medium/high energy):
-- All 3 meals home cooked, under {profile['max_cook_time_normal_day']} mins each
-- Suggest cross-meal reuse where possible (e.g. extra chapati from breakfast used for lunch)
+MEDIUM ENERGY (normal day):
+- Meals under 40 mins each
+- All 3 meals home cooked
+- Suggest cross-meal ingredient reuse to reduce effort
 
-IMPORTANT: NEVER suggest ordering outside or delivery. Always suggest a home cooked or ready-made easy recipe.
+HIGH ENERGY (feeling great):
+- Meals can be 40–55 mins each
+- All 3 meals home cooked, can be more elaborate
+- Suggest nutritious, balanced meals
+
+IMPORTANT: NEVER suggest ordering outside or delivery. Always home cooked or easy ready-made.
 
 Today's energy is: {day['energy_level']}
 
@@ -124,9 +131,11 @@ Rules:
 - reuse_tip: always look for cross-meal ingredient reuse to reduce cooking effort
 """
 
-def run_agent(work_tasks=None, home_tasks=None, rejected_meals=None):
+def run_agent(work_tasks=None, home_tasks=None, rejected_meals=None, energy_level=None):
     profile = load_json("data/user_profile.json")
     day = load_json("data/sarah_monday.json")
+    if energy_level:
+        day["energy_level"] = energy_level
 
     prompt = build_prompt(profile, day, work_tasks=work_tasks,
                           home_tasks=home_tasks, rejected_meals=rejected_meals)
@@ -190,10 +199,12 @@ Respond ONLY with valid JSON:
     return json.loads(raw.strip())
 
 def chat_agent(user_message: str, chat_history: list,
-               work_tasks=None, home_tasks=None) -> str:
+               work_tasks=None, home_tasks=None, energy_level=None) -> str:
     """Context-aware chat — Claude knows the full day context before responding."""
     profile = load_json("data/user_profile.json")
     day     = load_json("data/sarah_monday.json")
+    if energy_level:
+        day["energy_level"] = energy_level
     fridge  = ", ".join(day["fridge_items"])
 
     work_str = "\n".join([f"  - [{t.priority.upper()}] {t.title}" for t in (work_tasks or [])])
